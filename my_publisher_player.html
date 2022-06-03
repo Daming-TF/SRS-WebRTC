@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SRS</title>
+    <meta charset="utf-8">
+    <style>
+        body{
+            padding-top: 30px;
+        }
+    </style>
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css"/>
+    <script type="text/javascript" src="js/jquery-1.10.2.min.js"></script>
+    <script type="text/javascript" src="js/adapter-7.4.0.min.js"></script>
+    <script type="text/javascript" src="js/srs.sdk.js"></script>
+    <script type="text/javascript" src="js/winlin.utility.js"></script>
+    <script type="text/javascript" src="js/srs.page.js"></script>
+</head>
+<body>
+<div class="container">
+    <div class="form-inline">
+        URL:
+        <input type="text" id="publisher_txt_url" class="input-xxlarge" value="webrtc://47.112.130.31:1985/live/livestream?schema=http">
+        <button class="btn btn-primary" id="btn_publish">开始推流</button>
+    </div>
+
+    <label></label>
+    <video id="publisher_rtc_media_player" width="320" autoplay muted></video>
+</div>
+<div class="container">
+    <div class="form-inline">
+        <input type="hidden" id="txt_url" class="input-xxlarge" value="webrtc://47.112.130.31:1985/live/livestream/Ming?schema=http">
+        <button class="btn btn-primary" id="btn_play">播放视频</button>
+    </div>
+
+    <label></label>
+    <video id="rtc_media_player" controls autoplay></video>
+</div>
+
+<script type="text/javascript">
+$(function(){
+    var publisher_sdk = null; // Global handler to do cleanup when republishing.
+    var sdk = null; // Global handler to do cleanup when replaying.
+
+    var startRun = function() {
+        $('#publisher_rtc_media_player').show();
+        $('#rtc_media_player').show();
+
+        // Close PC when user replay.
+        if (publisher_sdk) {
+            publisher_sdk.close();
+        }
+        publisher_sdk = new SrsRtcPublisherAsync();
+
+        // Close PC when user replay.
+        if (sdk) {
+            sdk.close();
+        }
+        sdk = new SrsRtcPlayerAsync();
+
+
+        $('#publisher_rtc_media_player').prop('srcObject', publisher_sdk.stream);
+        $('#rtc_media_player').prop('srcObject', sdk.stream);
+
+
+        var publisher_url = $("#publisher_txt_url").val();
+        var url = $("#txt_url").val();
+
+        publisher_sdk.publish(publisher_url).then(function(publisher_session){
+            $('#sessionid').html(publisher_session.sessionid);
+            $('#simulator-drop').attr('href', publisher_session.simulator + '?drop=1&username=' + publisher_session.sessionid);
+        }).catch(function (publisher_reason) {
+            if (publisher_reason instanceof SrsError) {
+                if (publisher_reason.name === 'HttpsRequiredError') {
+                    alert(`WebRTC推流必须是HTTPS或者localhost：${publisher_reason.name} ${publisher_reason.message}`);
+                } else {
+                    alert(`${publisher_reason.name} ${publisher_reason.message}`);
+                }
+            }
+            if (publisher_reason instanceof DOMException) {
+                if (publisher_reason.name === 'NotFoundError') {
+                    alert(`找不到麦克风和摄像头设备：getUserMedia ${publisher_reason.name} ${publisher_reason.message}`);
+                } else if (publisher_reason.name === 'NotAllowedError') {
+                    alert(`你禁止了网页访问摄像头和麦克风：getUserMedia ${publisher_reason.name} ${publisher_reason.message}`);
+                } else if (['AbortError', 'NotAllowedError', 'NotFoundError', 'NotReadableError', 'OverconstrainedError', 'SecurityError', 'TypeError'].includes(publisher_reason.name)) {
+                    alert(`getUserMedia ${publisher_reason.name} ${publisher_reason.message}`);
+                }
+            }
+            publisher_sdk.close();
+            $('#publisher_rtc_media_player').hide();
+            console.error(publisher_reason);
+        });
+
+        sdk.play(url).then(function(session){
+            $('#sessionid').html(session.sessionid);
+            $('#simulator-drop').attr('href', session.simulator + '?drop=1&username=' + session.sessionid);
+        }).catch(function (reason) {
+            sdk.close();
+            $('#rtc_media_player').hide();
+            console.error(reason);
+        });
+    };
+
+    $('#publisher_rtc_media_player').hide();
+    $('#rtc_media_player').hide();
+
+    $("#btn_publish").click(startRun);
+    $("#btn_play").click(function() {
+        $('#rtc_media_player').prop('muted', false);
+        startRun();
+    });
+
+});
+
+</script>
+</body>
+</html>
+

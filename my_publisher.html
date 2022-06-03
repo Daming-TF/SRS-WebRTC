@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SRS</title>
+    <meta charset="utf-8">
+    <style>
+        body{
+            padding-top: 30px;
+        }
+    </style>
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css"/>
+    <script type="text/javascript" src="js/jquery-1.10.2.min.js"></script>
+    <script type="text/javascript" src="js/adapter-7.4.0.min.js"></script>
+    <script type="text/javascript" src="js/srs.sdk.js"></script>
+    <script type="text/javascript" src="js/winlin.utility.js"></script>
+    <script type="text/javascript" src="js/srs.page.js"></script>
+</head>
+<body>
+<div class="container">
+    <div class="form-inline">
+        URL:
+        <input type="text" id="publisher_txt_url" class="input-xxlarge" value="webrtc://47.112.130.31/live/livestream">
+        <button class="btn btn-primary" id="btn_publish">开始推流</button>
+    </div>
+
+    <label></label>
+    <video id="publisher_rtc_media_player" width="320" autoplay muted></video>
+</div>
+
+<script type="text/javascript">
+$(function(){
+    var publisher_sdk = null; // Global handler to do cleanup when republishing.
+    var startPublish = function() {
+        $('#publisher_rtc_media_player').show();
+
+        // Close PC when user replay.
+        if (publisher_sdk) {
+            publisher_sdk.close();
+        }
+        publisher_sdk = new SrsRtcPublisherAsync();
+
+        $('#publisher_rtc_media_player').prop('srcObject', publisher_sdk.stream);
+
+        var publisher_url = $("#publisher_txt_url").val();
+        publisher_sdk.publish(publisher_url).then(function(session){
+        }).catch(function (publisher_reason) {
+            // Throw by sdk.
+            if (publisher_reason instanceof SrsError) {
+                if (publisher_reason.name === 'HttpsRequiredError') {
+                    alert(`WebRTC推流必须是HTTPS或者localhost：${publisher_reason.name} ${publisher_reason.message}`);
+                } else {
+                    alert(`${publisher_reason.name} ${publisher_reason.message}`);
+                }
+            }
+            // See https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia#exceptions
+            if (publisher_reason instanceof DOMException) {
+                if (publisher_reason.name === 'NotFoundError') {
+                    alert(`找不到麦克风和摄像头设备：getUserMedia ${publisher_reason.name} ${publisher_reason.message}`);
+                } else if (publisher_reason.name === 'NotAllowedError') {
+                    alert(`你禁止了网页访问摄像头和麦克风：getUserMedia ${publisher_reason.name} ${publisher_reason.message}`);
+                } else if (['AbortError', 'NotAllowedError', 'NotFoundError', 'NotReadableError', 'OverconstrainedError', 'SecurityError', 'TypeError'].includes(publisher_reason.name)) {
+                    alert(`getUserMedia ${publisher_reason.name} ${publisher_reason.message}`);
+                }
+            }
+
+            publisher_sdk.close();
+            $('#publisher_rtc_media_player').hide();
+            console.error(publisher_reason);
+        });
+    };
+
+    $('#publisher_rtc_media_player').hide();
+
+    $("#btn_publish").click(startPublish);
+
+});
+
+</script>
+</body>
+</html>
+
