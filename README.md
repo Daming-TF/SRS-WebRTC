@@ -69,10 +69,10 @@ HTTPS需要域名，是因为个人不能够申请指向IP的SSL证书
 IP只能给企业签发，并且申请人必须对IP拥有所有权（我们买的ECS那些IP，相当于从阿里云租来的）
 然后，域名如果解析指向中国境内的服务器，就必须备案（为了了解该网站的用途以及开发者是谁）
 如果被抓到没备案，就跟这幅图一样，会被自动拦截访问  
-![image]()
+![image](https://github.com/Daming-TF/SRS-WebRTC/blob/master/image/%E6%8A%93%E9%A9%AC%E5%86%B7%E7%9F%A5%E8%AF%861.png)
 
 ## 抓马冷知识 2
 如何架一台境外服务器，比较实惠的就是购买腾讯云偏远地区的服务器，架一个宝塔系统。进入控制面板需要重置密码以及绑定密匙。之后就是安装一些默认需要的工具
 
 进入面板->网络->PHP服务，增加站点填写域名，之后就进入根目录，把html改名为index.html，并且把js，css文件夹放进去根目录下即可访问（srs.acetaffy.club）  
-![image]()
+![image](https://github.com/Daming-TF/SRS-WebRTC/blob/master/image/%E6%8A%93%E9%A9%AC%E5%86%B7%E7%9F%A5%E8%AF%862.png)
