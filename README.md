@@ -1,52 +1,78 @@
-# Mediapipe-HandsTracker的TFLite模型Python推理接口
+# SRS-WebRTC
+**```Introdution```**: 实现游客自由登录网页时，获取本地相机权限，通过WebRTC推流到云端的SRS服务器上，由SRS分流调控。本地运行python程序并捕获视频流抽帧处理。最后通过RTMP推流到服务器，并交由服务器重新分流到游客访问页面
 
-#### 更新
-- [x] Mediapipe TFLite的初步逻辑完成(2021.01.07)
-- [x] 加入基于规则的单手手势识别(2021.01.14)
-- [x] 支持手检测器输入(2022.01.28)
-- [x] 支持双手逻辑(2022.02.06)
-- [x] 支持肢体关键点输入(2022.02.08)
+## 一. srs服务器搭建
+**参考官网地址**：https://github.com/ossrs/srs/wiki/v4_CN_Home#srs-overview
+不看官网wiki必翻车！   
+**bilbil视频**：https://www.bilibili.com/video/BV1Lh411v7kD/?p=2&spm_id_from=pageDriver  
+**SRS控制台入口**：http://47.112.130.31:8080/console/ng_index.html#/connect  
+**测试WebRTC入口**：http://47.112.130.31:8080/players/srs_player.html
 
-#### 使用WebCam-双手逻辑测试
-```
-python scripts/demo_hands.py --camera --debug[optional] --roi_mode=[0|1]
-# debug: 显示额外信息;
-# roi_mode: 0为手检测器输入，1为肢体关键点输入;
-# capability: 0为关键点小模型，1为大模型;
-```
-
-## 
-#### 默认读取videos目录下的hand_test_02.mp4作为测试视频
-```
-python scripts/demo.py
-# inp: 可通过parser的inp修改测试视频；
+## 二.基本命令
+**1.查看srs服务器进程**
+```angular2html
+ps -ef | grep srs
 ```
 
-#### 使用WebCam测试
-```
-python scripts/demo.py --camera
-# roi: 默认是使用检测器，选择roi会用默认roi区域作为第一帧输入
-```
-
-#### 显示World-Landmarks
-```
-python scripts/demo.py --camera --draw3d
+**2.启动srs服务器**
+```angular2html
+./objs/srs -c conf/srs.conf
 ```
 
-#### TFLite Full模型与Lite模型切换
-```
-python scripts/demo.py --capability=1
-# capability: 1代表初始化Full模型，0代表使用Lite模型；
+**3.查看SRS的状态**
+```angular2html
+./etc/init.d/srs status
 ```
 
-#### 说明：
-- TFLite的Full & Lite模型以及MNN的Full & Lite模型都在lib/models目录下；  
-- Parser参数有pipe_mode选项，**1**代表使用Mediapipe的**旋转转正链路**，**0**代表使用我们之前的**简单逻辑链路**，默认是使用Mediapipe的数据链路；
-- 测试过程自动保存在save目录下；
-- Demo仅支持单手，通过设置--roi可以不使用检测器，使用预设置的roi，第一帧对**红色框区域**作为关键点模型的输入，后续使用前一帧关键点结果计算ROI作为下一帧输入；
-- 左上角**红色概率值**代表手在ROI里面的概率，也用于下一帧用不用前一帧的关键点的依据（概率阈值为0.5）；
-- 左上角**LeftHand or RightHand**是手的左右手分类结果；
-- 左下角**红色Input区域**表示通过**旋转转正链路**旋转后输入给关键点模型的输入ROI区域；
-- **蓝色旋转框**表示根据前一帧关键点结果计算的ROI区域；
-- 部分函数是基于Mediapipe的C++代码转python的，因此此类函数部分也包含有**C++代码**，可与python代码一起参考，相信会有帮助；
-- 关键点周围圆圈颜色代表关键点离相机的远近距离，离相机近的关键点周围变成白色，远的关键点周围圆圈变黑色，这个颜色只能用于判断哪个关键点更接近相机，无法用于计算距离；
+
+**4.看SRS的日志**
+```angular2html
+tail -n 30 -f ./objs/srs.log
+```
+
+## 三.测试WebRTC拉流
+**1.首先开通防火墙端口**  
+```Note```：注意有坑！从控制台开启防火墙端口是内网端口，外网还是没有开。所以需要手动用firewall-cmd命令开启
+
+**2.firewall-cmd命令**
+1)查看所有打开的端口：
+```angular2html
+ firewall-cmd --list-all
+```
+2)将端口1935， 8080， 1985， 8000分别打开，注意：端口8000的协议类型为udp，其他端口协议类型为tcp：
+```angular2html
+firewall-cmd --add-port=8000/udp --permanent
+```
+3)重新覆盖：
+```angular2html
+firewall-cmd --reload
+```
+
+**3. 修改rtc2rtmp.conf配置文件**
+把其中rtc_server中的candidate改为服务器的公网ip
+
+
+## 四.测试WebRTC推流
+**1.对chrome添加参数
+```angular2html
+--ignore-certificate-errors --allow-running-insecure-content --unsafely-treat-insecure-origin-as-secure="http://47.112.130.31:8080"
+```
+
+## 五.构造页面
+由于srs4支持WebRTC，所以提供了一个WebRTC的调试界面并且是开源的，主要用到的是rtc_player.html以及rtc_publisher.html两个文件（srs/trunk/research/players），需要把这两个heml文件以及js，css文件夹拷到本地并整合成我们自己的网页（这样子就可以绕开JavaScript的开发直接使用现成的），修改完还需要对srs服务器重新编译。
+
+
+## 抓马冷知识 1
+问题又来了，由于WebRTC需要https ssl证书才能获取相机权限（避免游客信息泄露），HTTPS就是一个加密证书，由互联网机构签发。
+HTTPS需要域名，是因为个人不能够申请指向IP的SSL证书
+这些机构能够给域名或者IP签发SSL证书。
+IP只能给企业签发，并且申请人必须对IP拥有所有权（我们买的ECS那些IP，相当于从阿里云租来的）
+然后，域名如果解析指向中国境内的服务器，就必须备案（为了了解该网站的用途以及开发者是谁）
+如果被抓到没备案，就跟这幅图一样，会被自动拦截访问  
+![image]()
+
+## 抓马冷知识 2
+如何架一台境外服务器，比较实惠的就是购买腾讯云偏远地区的服务器，架一个宝塔系统。进入控制面板需要重置密码以及绑定密匙。之后就是安装一些默认需要的工具
+
+进入面板->网络->PHP服务，增加站点填写域名，之后就进入根目录，把html改名为index.html，并且把js，css文件夹放进去根目录下即可访问（srs.acetaffy.club）  
+![image]()
